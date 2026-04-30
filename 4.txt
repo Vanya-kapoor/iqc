@@ -1,0 +1,1 @@
+rank(ts_sum(vec_avg(nws12_afterhsz_sl),57)) > 0.5 ? 1: rank(-ts_delta(close, 2))

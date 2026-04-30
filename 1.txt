@@ -1,0 +1,13 @@
+rank(
+    group_neutralize(
+        ts_decay_linear(
+            trade_when(rank(scl12_buzz) > 0.7,
+                rank(ts_mean(scl12_sentiment, 12))
+                + rank(ts_delta(snt_value, 4)),
+                0
+            )
+            * rank(-ts_delta(close, 4))
+            * rank(volume / ts_mean(volume, 20)),
+        8),
+    subindustry)
+)

@@ -1,0 +1,7 @@
+liq_spike = rank(volume / ts_mean(volume, 25));
+delayed_move = rank(ts_delta(close, 2) - ts_delta(close, 3));
+-rank(
+  group_neutralize(
+    ts_decay_linear(-delayed_move * liq_spike, 6),
+  subindustry)
+)
