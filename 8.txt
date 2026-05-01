@@ -1,7 +1,0 @@
-group_rank(
-  rank(
-    min(max(log(implied_volatility_call_120 / parkinson_volatility_120),
-    -1), 1)
-  ),
-  industry
-)
