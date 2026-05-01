@@ -1,3 +1,0 @@
-slow = ts_regression(ts_sum(ts_backfill(fnd6_newqv1300_ivltq,50),300), ts_step(1), 575, rettype=2);
-fast = ts_delta(ts_backfill(fnd6_newqv1300_ivltq,25), 3);
-0.85 * slow + 0.15 * fast;
