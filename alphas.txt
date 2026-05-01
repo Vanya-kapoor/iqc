@@ -1,78 +1,90 @@
-#alpha1
-trade_when(pcr_oi_180 < 1, (implied_volatility_call_270 - implied_volatility_put_270), -1)
-#alpha2
-    group_rank(
-        rank(
-            min(max(log(implied_volatility_call_120 / parkinson_volatility_120), -1), 1)),
-        industry)
-#alpha3
-        liab_to_assets = liabilities / (abs(assets) + 1);
-debt_to_equity = liabilities / (abs(equity) + 1);
-interest_coverage = ebit / (abs(interest_expense) + 1);
-liab_trend = (liabilities / (abs(ts_delay(liabilities, 1)) + 1)) - 1;
-
-s_liab_assets = ts_mean(liab_to_assets, 4);
-s_debt_equity = ts_mean(debt_to_equity, 4);
-s_interest_cov = ts_mean(interest_coverage, 4);
-s_liab_trend = ts_mean(liab_trend, 4);
-
-score_liab_assets = rank(-s_liab_assets);
-score_debt_equity = rank(-s_debt_equity);
-score_interest_cov = rank(s_interest_cov);
-score_liab_trend = rank(-s_liab_trend);
-
-composite_alpha =
-    (0.30 * score_liab_assets) +
-    (0.25 * score_debt_equity) +
-    (0.25 * score_interest_cov) +
-    (0.20 * score_liab_trend);
-
-regime = ts_mean(returns, 20);
-
-- rank(
-    group_neutralize(
-        ts_decay_linear(
-            trade_when(
-                regime > 0,
-                composite_alpha,
-                0),
-            12),
-        subindustry))
-#alpha4
-    slow = ts_regression(ts_sum(ts_backfill(fnd6_newqv1300_ivltq, 50), 300), ts_step(1), 575, rettype = 2);
-fast = ts_delta(ts_backfill(fnd6_newqv1300_ivltq, 25), 3);
-0.85 * slow + 0.15 * fast;
-#alpha5
+# Alpha 1: Options Skew with PCR Conditioning
 rank(
-    group_neutralize(
-        ts_decay_linear(
-            trade_when(rank(scl12_buzz) > 0.7,
-                       rank(ts_mean(scl12_sentiment, 12)) + rank(ts_delta(snt_value, 4)),
-                       0) *
-                rank(-ts_delta(close, 4)) * rank(volume / ts_mean(volume, 20)),
-            8),
-        subindustry))
-#alpha5
-            rank(ts_sum(vec_avg(nws12_afterhsz_sl), 57)) > 0.5
-    ? 1
-    : rank(-ts_delta(close, 2))
+  ts_decay_linear(
+    (implied_volatility_call_270 - implied_volatility_put_270)
+    * rank(1 / (1 + pcr_oi_180)),
+  6)
+)
 
-#alpha6
-          liq_spike = rank(volume / ts_mean(volume, 25));
-delayed_move = rank(ts_delta(close, 2) - ts_delta(close, 3));
-- rank(
-    group_neutralize(
-        ts_decay_linear(-delayed_move *liq_spike, 6),
-        subindustry))
-#alpha7
-    alpha1 = rank(-group_neutralize(
-        ts_decay_linear(
-            trade_when(rank(scl12_buzz) > 0.8, -rank(snt_value), -0.05 * rank(snt_value)) + rank(ts_mean(scl12_sentiment, 2) - ts_mean(scl12_sentiment, 11)) + rank(ts_delta(snt_value, 3)),
-            6),
-        subindustry));
+# Alpha 2: IV vs Realized Vol Mispricing
+rank(
+  group_neutralize(
+    ts_decay_linear(
+      log(implied_volatility_call_120 / parkinson_volatility_120)
+      * rank(-ts_delta(close, 3)),
+    6),
+  industry)
+)
 
-vol_spike = volume / ts_mean(volume, 20);
-price_move = abs(returns);
-alpha2 = rank(-returns * rank(vol_spike) * (1 - price_move));
+# Alpha 3: Balance Sheet Strength in Positive Regimes
+rank(
+  group_neutralize(
+    ts_decay_linear(
+      (
+        0.30 * rank(-ts_mean(liabilities / (abs(assets) + 1), 4)) +
+        0.25 * rank(-ts_mean(liabilities / (abs(equity) + 1), 4)) +
+        0.25 * rank(ts_mean(ebit / (abs(interest_expense) + 1), 4)) +
+        0.20 * rank(-ts_mean((liabilities / (abs(ts_delay(liabilities,1)) + 1)) - 1, 4))
+      )
+      * rank(ts_mean(returns, 20)),
+    10),
+  subindustry)
+)
 
-rank(group_neutralize(ts_decay_linear(alpha1 + 0.35 * alpha2, 6), subindustry))
+# Alpha 4: Buzz-Driven Sentiment Reversion
+rank(
+  group_neutralize(
+    ts_decay_linear(
+      rank(scl12_buzz)
+      * (rank(ts_mean(scl12_sentiment, 12)) + rank(ts_delta(snt_value, 4)))
+      * rank(-ts_delta(close, 4))
+      * rank(volume / ts_mean(volume, 20)),
+    8),
+  subindustry)
+)
+
+# Alpha 5: News Flow + Short-Term Reversion
+rank(
+  ts_decay_linear(
+    rank(ts_sum(vec_avg(nws12_afterhsz_sl), 57))
+    * rank(-ts_delta(close, 2)),
+  6)
+)
+
+# Alpha 6: Liquidity Shock and Delayed Move
+rank(
+  group_neutralize(
+    ts_decay_linear(
+      rank(volume / ts_mean(volume, 25))
+      * rank(ts_delta(close, 2) - ts_delta(close, 4)),
+    6),
+  subindustry)
+)
+
+# Alpha 7: Sentiment Shift + Volume Inefficiency
+rank(
+  group_neutralize(
+    ts_decay_linear(
+      (
+        rank(scl12_buzz) * (-rank(snt_value)) +
+        rank(ts_mean(scl12_sentiment, 2) - ts_mean(scl12_sentiment, 11)) +
+        rank(ts_delta(snt_value, 3))
+      )
+      +
+      0.35 * (
+        rank(-returns)
+        * rank(volume / ts_mean(volume, 20))
+        * rank(1 - abs(returns))
+      ),
+    6),
+  subindustry)
+)
+
+# Alpha 8: Long-Term Trend with VWAP Pullback
+rank(
+  ts_decay_linear(
+    (ts_mean(returns, 250) / ts_std_dev(returns, 250))
+    * rank(volume / adv20)
+    * rank(vwap / close),
+  8)
+)
