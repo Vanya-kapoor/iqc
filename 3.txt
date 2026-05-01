@@ -1,2 +1,0 @@
-trade_when(pcr_oi_180 < 1,
-  (implied_volatility_call_270-implied_volatility_put_270), -1)
