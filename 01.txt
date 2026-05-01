@@ -1,0 +1,35 @@
+liab_to_assets = liabilities / (abs(assets) + 1);
+debt_to_equity = liabilities / (abs(equity) + 1);
+interest_coverage = ebit / (abs(interest_expense) + 1);
+liab_trend = (liabilities / (abs(ts_delay(liabilities, 1)) + 1)) - 1;
+
+s_liab_assets = ts_mean(liab_to_assets, 4);
+s_debt_equity = ts_mean(debt_to_equity, 4);
+s_interest_cov = ts_mean(interest_coverage, 4);
+s_liab_trend = ts_mean(liab_trend, 4);
+
+
+score_liab_assets = rank(-s_liab_assets);
+score_debt_equity = rank(-s_debt_equity);
+score_interest_cov = rank(s_interest_cov);
+score_liab_trend = rank(-s_liab_trend);
+
+composite_alpha =
+    (0.30 * score_liab_assets) +
+    (0.25 * score_debt_equity) +
+    (0.25 * score_interest_cov) +
+    (0.20 * score_liab_trend);
+
+regime = ts_mean(returns, 20);
+
+-rank(
+    group_neutralize(
+        ts_decay_linear(
+            trade_when(
+                regime > 0,
+                composite_alpha,
+                0
+            ),
+        12),
+    subindustry)
+)
