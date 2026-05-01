@@ -1,2 +1,0 @@
-positive_days=ts_sum(returns>0? 1:0, 250);
-trade_when(volume>adv20,positive_days,-1)*rank(vwap/close)
